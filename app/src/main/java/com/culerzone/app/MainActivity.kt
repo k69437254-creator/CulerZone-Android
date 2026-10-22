@@ -255,37 +255,10 @@ private fun CulerZoneApp() {
                         item { PlayerLine("⚡", "خط الهجوم", "FWD", t) }
                     }
 
+                    
                     3 -> {
                         item {
-                            HeroCard(
-                                t,
-                                "مجتمع الكوليز",
-                                "مساحة النقاشات والتوقعات بين مشجعي برشلونة."
-                            )
-                        }
-                        item {
-                            InfoCard(
-                                "المجتمع غير متصل بعد",
-                                "المنشورات والمناقشات تحتاج إلى ربط إضافي بقاعدة البيانات.",
-                                t
-                            )
-                        }
-                        item { SectionHeading("أفكار للمجتمع", t) }
-                        item {
-                            NewsItem(
-                                "💬",
-                                "نقاشات المباريات",
-                                "ميزة النقاشات تحتاج إلى تجهيز قاعدة بيانات المنشورات.",
-                                t
-                            )
-                        }
-                        item {
-                            NewsItem(
-                                "📊",
-                                "توقع النتيجة",
-                                "ميزة قادمة بعد تجهيز التخزين والمزامنة.",
-                                t
-                            )
+                            CommunityScreen(t)
                         }
                     }
 
@@ -1001,6 +974,233 @@ private fun AuthPanel(t: ZoneTheme) {
                     fontSize = 13.sp,
                     lineHeight = 19.sp
                 )
+            }
+        }
+    }
+}
+
+private data class CommunityPost(
+    val id: String,
+    val text: String,
+    val authorUid: String,
+    val authorName: String,
+    val createdAt: Long,
+    val likes: Map<String, Boolean> = emptyMap(),
+    val commentsCount: Int = 0
+)
+
+@Composable
+private fun CommunityScreen(t: ZoneTheme) {
+    val auth = FirebaseAuth.getInstance()
+    val user = auth.currentUser
+    val database = FirebaseDatabase.getInstance().reference
+
+    var postText by remember { mutableStateOf("") }
+    var posts by remember { mutableStateOf<List<CommunityPost>>(emptyList()) }
+    var status by remember { mutableStateOf("جاري تحميل المنشورات...") }
+    var loading by remember { mutableStateOf(false) }
+
+    DisposableEffect(user?.uid) {
+        if (user == null) {
+            status = "سجّل الدخول حتى تستخدم المجتمع."
+            onDispose { }
+        } else {
+            val postsRef = database.child("posts")
+
+            val listener = object : com.google.firebase.database.ValueEventListener {
+                override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                    posts = snapshot.children.mapNotNull { item ->
+                        val id = item.key ?: return@mapNotNull null
+                        val text = item.child("text").getValue(String::class.java)
+                            ?: return@mapNotNull null
+                        val authorUid = item.child("authorUid")
+                            .getValue(String::class.java) ?: ""
+                        val authorName = item.child("authorName")
+                            .getValue(String::class.java) ?: "مشجع برشلونة"
+                        val createdAt = item.child("createdAt")
+                            .getValue(Long::class.java) ?: 0L
+
+                        val likes = item.child("likes").children.mapNotNull { like ->
+                            val uid = like.key ?: return@mapNotNull null
+                            val value = like.getValue(Boolean::class.java) ?: false
+                            if (value) uid to true else null
+                        }.toMap()
+
+                        CommunityPost(
+                            id = id,
+                            text = text,
+                            authorUid = authorUid,
+                            authorName = authorName,
+                            createdAt = createdAt,
+                            likes = likes,
+                            commentsCount = item.child("comments").childrenCount.toInt()
+                        )
+                    }.sortedByDescending { it.createdAt }
+
+                    status = if (posts.isEmpty()) {
+                        "ماكو منشورات بعد. كن أول واحد ينشر!"
+                    } else {
+                        ""
+                    }
+                }
+
+                override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                    status = "تعذر تحميل المنشورات: ${error.message}"
+                }
+            }
+
+            postsRef.addValueEventListener(listener)
+            onDispose {
+                postsRef.removeEventListener(listener)
+            }
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            "مجتمع الكوليز",
+            color = t.text,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            "شارك رأيك وتفاعل ويه مشجعي برشلونة.",
+            color = t.muted,
+            fontSize = 14.sp
+        )
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = t.panel),
+            shape = RoundedCornerShape(18.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = postText,
+                    onValueChange = { if (it.length <= 1000) postText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("شنو رأيك ببرشلونة؟") },
+                    label = { Text("منشور جديد") },
+                    minLines = 3,
+                    maxLines = 5
+                )
+
+                Button(
+                    onClick = {
+                        val currentUser = auth.currentUser
+                        val message = postText.trim()
+
+                        if (currentUser == null) {
+                            status = "سجّل الدخول أولًا."
+                        } else if (message.isEmpty()) {
+                            status = "اكتب نص المنشور أولًا."
+                        } else {
+                            loading = true
+                            val postRef = database.child("posts").push()
+                            val authorName = currentUser.displayName
+                                ?: currentUser.email?.substringBefore("@")
+                                ?: "مشجع برشلونة"
+
+                            val post = mapOf(
+                                "text" to message,
+                                "authorUid" to currentUser.uid,
+                                "authorName" to authorName.take(60),
+                                "createdAt" to System.currentTimeMillis()
+                            )
+
+                            postRef.setValue(post)
+                                .addOnSuccessListener {
+                                    postText = ""
+                                    status = "تم نشر منشورك بنجاح."
+                                    loading = false
+                                }
+                                .addOnFailureListener { error ->
+                                    status = "فشل النشر: ${error.message}"
+                                    loading = false
+                                }
+                        }
+                    },
+                    enabled = !loading && postText.trim().isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (loading) "جاري النشر..." else "نشر المنشور")
+                }
+            }
+        }
+
+        if (status.isNotBlank()) {
+            Text(status, color = t.muted, fontSize = 13.sp)
+        }
+
+        posts.forEach { post ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = t.panel),
+                shape = RoundedCornerShape(18.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        post.authorName,
+                        color = t.accent,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(post.text, color = t.text, fontSize = 16.sp)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "❤️ ${post.likes.size}",
+                            color = t.muted
+                        )
+
+                        Text(
+                            "💬 ${post.commentsCount}",
+                            color = t.muted
+                        )
+
+                        TextButton(
+                            onClick = {
+                                val uid = auth.currentUser?.uid
+                                if (uid == null) {
+                                    status = "سجّل الدخول أولًا."
+                                } else if (post.likes[uid] == true) {
+                                    status = "سبق وأن أعجبت بهذا المنشور."
+                                } else {
+                                    database.child("posts")
+                                        .child(post.id)
+                                        .child("likes")
+                                        .child(uid)
+                                        .setValue(true)
+                                        .addOnFailureListener { error ->
+                                            status = "تعذر تسجيل الإعجاب: ${error.message}"
+                                        }
+                                }
+                            }
+                        ) {
+                            Text(
+                                if (post.likes[user?.uid] == true)
+                                    "أعجبت به ❤️"
+                                else
+                                    "إعجاب ❤️"
+                            )
+                        }
+                    }
+                }
             }
         }
     }

@@ -124,16 +124,15 @@ fun CulerZoneApp() {
                         item { QuickInfo() }
                     }
 
-                    1 -> {
-                        item { SectionTitle("المباريات") }
-                        item {
-                            NewsCard(
-                                "⚽",
-                                "جدول المباريات",
-                                "سيتم ربط جدول المباريات والنتائج الحقيقية لاحقًا."
-                            )
-                        }
-                    }
+                    
+1 -> {
+    item { SectionTitle("مباريات برشلونة") }
+
+    item {
+        MatchCenter()
+    }
+}
+
 
                     2 -> {
                         item { SectionTitle("الفريق الأول") }
@@ -180,6 +179,69 @@ fun CulerZoneApp() {
                 }
             }
         }
+    }
+}
+
+
+@Composable
+fun MatchCenter() {
+    var selectedFilter by remember {
+        mutableStateOf("القادمة")
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                SurfaceDark,
+                RoundedCornerShape(20.dp)
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            "مركز المباريات",
+            color = TextWhite,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            "تابع مباريات البلوغرانا",
+            color = TextMuted,
+            fontSize = 13.sp
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("القادمة", "النتائج").forEach { filter ->
+                FilterChip(
+                    selected = selectedFilter == filter,
+                    onClick = { selectedFilter = filter },
+                    label = { Text(filter) }
+                )
+            }
+        }
+
+        Text(
+            if (selectedFilter == "القادمة") {
+                "المباريات القادمة"
+            } else {
+                "النتائج السابقة"
+            },
+            color = Gold,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Text(
+            "بيانات المباريات الحقيقية ستظهر بعد ربط مصدر النتائج.",
+            color = TextMuted,
+            fontSize = 13.sp,
+            lineHeight = 21.sp
+        )
     }
 }
 

@@ -7,84 +7,66 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val Background = Color(0xFF080D18)
-private val SurfaceDark = Color(0xFF131C2D)
-private val BarcaBlue = Color(0xFF0755A5)
-private val BarcaRed = Color(0xFFA50044)
-private val Gold = Color(0xFFF5C518)
-private val TextWhite = Color(0xFFF4F6FC)
-private val TextMuted = Color(0xFF9AA8BD)
+private data class ZoneTheme(
+    val name: String, val bg: Color, val panel: Color,
+    val primary: Color, val accent: Color, val text: Color, val muted: Color
+)
+
+private val zoneThemes = listOf(
+    ZoneTheme("برشلونة الليلي", Color(0xFF080D18), Color(0xFF131C2D), Color(0xFF1769C2), Color(0xFFA50044), Color(0xFFF4F6FC), Color(0xFF9AA8BD)),
+    ZoneTheme("بلو غامق", Color(0xFF071626), Color(0xFF102943), Color(0xFF168BCE), Color(0xFF36C5F0), Color(0xFFF2F8FF), Color(0xFFA2BDD0)),
+    ZoneTheme("أحمر وأسود", Color(0xFF130B10), Color(0xFF26131D), Color(0xFFA50044), Color(0xFFFF526F), Color(0xFFFFF2F5), Color(0xFFC6AAB5)),
+    ZoneTheme("نهاري", Color(0xFFF0F3F8), Color(0xFFFFFFFF), Color(0xFF0755A5), Color(0xFFA50044), Color(0xFF172238), Color(0xFF66758C)),
+    ZoneTheme("ذهبي", Color(0xFF11100A), Color(0xFF242114), Color(0xFFB58B19), Color(0xFFF5C518), Color(0xFFFFF9E8), Color(0xFFC5B98F))
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = BarcaBlue,
-                    secondary = BarcaRed,
-                    background = Background,
-                    surface = SurfaceDark
-                )
-            ) {
-                CulerZoneApp()
-            }
-        }
+        setContent { CulerZoneApp() }
     }
 }
 
 @Composable
-fun CulerZoneApp() {
+private fun CulerZoneApp() {
+    var themeIndex by remember { mutableIntStateOf(0) }
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showThemes by remember { mutableStateOf(false) }
+    val t = zoneThemes[themeIndex]
+    val scheme = lightColorScheme(
+        primary = t.primary, secondary = t.accent, background = t.bg,
+        surface = t.panel, onPrimary = Color.White, onSecondary = Color.White,
+        onBackground = t.text, onSurface = t.text
+    )
 
-    CompositionLocalProvider(
-        LocalLayoutDirection provides LayoutDirection.Rtl
-    ) {
+    MaterialTheme(colorScheme = scheme) {
         Scaffold(
-            containerColor = Background,
+            containerColor = t.bg,
             bottomBar = {
-                NavigationBar(
-                    containerColor = Color(0xFF101727)
-                ) {
-                    val tabs = listOf(
-                        "الرئيسية" to "⌂",
-                        "المباريات" to "⚽",
-                        "الفريق" to "👥",
-                        "المجتمع" to "💬",
-                        "حسابي" to "●"
-                    )
-
-                    tabs.forEachIndexed { index, tab ->
+                NavigationBar(containerColor = t.panel, contentColor = t.text) {
+                    val tabs = listOf("الرئيسية", "المباريات", "الفريق", "المجتمع", "حسابي")
+                    val icons = listOf("⌂", "⚽", "👥", "☷", "●")
+                    tabs.forEachIndexed { index, title ->
                         NavigationBarItem(
                             selected = selectedTab == index,
                             onClick = { selectedTab = index },
-                            icon = {
-                                Text(tab.second, fontSize = 20.sp)
-                            },
-                            label = {
-                                Text(tab.first, fontSize = 10.sp)
-                            },
+                            icon = { Text(icons[index], fontSize = 19.sp) },
+                            label = { Text(title, fontSize = 10.sp) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Gold,
-                                selectedTextColor = Gold,
-                                indicatorColor = BarcaBlue,
-                                unselectedIconColor = TextMuted,
-                                unselectedTextColor = TextMuted
+                                selectedIconColor = t.accent, selectedTextColor = t.accent,
+                                indicatorColor = t.primary.copy(alpha = 0.22f),
+                                unselectedIconColor = t.muted, unselectedTextColor = t.muted
                             )
                         )
                     }
@@ -92,470 +74,200 @@ fun CulerZoneApp() {
             }
         ) { padding ->
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Background)
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                item { Header() }
-
+                item {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween) {
+                        Column {
+                            Text("CULERZONE", color = t.accent, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 2.sp)
+                            Text(pageTitle(selectedTab), color = t.text, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                        }
+                        OutlinedButton(onClick = { showThemes = true }, shape = RoundedCornerShape(14.dp)) {
+                            Text("🎨 الثيم", color = t.text)
+                        }
+                    }
+                }
                 when (selectedTab) {
                     0 -> {
-                        item { WelcomeCard() }
-                        item { SectionTitle("مركز المشجع") }
+                        item { HeroCard(t) }
+                        item { SectionHeading("آخر الأخبار", t) }
+                        item { NewsItem("🔵", "متابعة أخبار برشلونة", "مساحة الأخبار جاهزة للربط بمصدر موثوق.", t) }
+                        item { NewsItem("🔴", "كل ما يخص البلوغرانا", "ستظهر الأخبار الحقيقية بعد إعداد مصدر البيانات.", t) }
+                        item { SectionHeading("مركز المباراة", t) }
+                        item { MatchCard(t) }
+                        item { SectionHeading("وصول سريع", t) }
                         item {
-                            InfoCard(
-                                "المباريات",
-                                "تابع جدول برشلونة",
-                                BarcaBlue
-                            )
-                        }
-                        item {
-                            InfoCard(
-                                "الفريق",
-                                "اكتشف مراكز اللاعبين",
-                                BarcaRed
-                            )
-                        }
-                        item { SectionTitle("عالم البلوغرانا") }
-                        item {
-                            NewsCard(
-                                "🔵🔴",
-                                "أخبار برشلونة",
-                                "سيتم عرض الأخبار بعد ربط مصدر موثوق."
-                            )
-                        }
-                    }
-
-                    1 -> {
-                        item { SectionTitle("مباريات برشلونة") }
-                        item { MatchCenter() }
-                    }
-
-                    2 -> {
-                        item { SectionTitle("فريق برشلونة") }
-                        item { TeamCenter() }
-                    }
-
-                    3 -> {
-                        item { SectionTitle("مجتمع CulerZone") }
-                        item {
-                            NewsCard(
-                                "💬",
-                                "مجتمع الكتلان",
-                                "واجهة المجتمع جاهزة للتطوير. المنشورات والمزامنة تحتاج خدمة خلفية."
-                            )
-                        }
-                    }
-
-                    else -> {
-                        item { SectionTitle("حسابي") }
-                        item {
-                            NewsCard(
-                                "👤",
-                                "ملف المشجع",
-                                "تسجيل الدخول وحفظ الحساب يحتاجان إلى إعداد خدمة حسابات."
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    Text(
-                        "CulerZone • نسخة تجريبية",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun Header() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                "CULERZONE",
-                color = TextWhite,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Black
-            )
-            Text(
-                "عالم برشلونة بين إيديك",
-                color = TextMuted,
-                fontSize = 12.sp
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .size(50.dp)
-                .background(
-                    Brush.linearGradient(
-                        listOf(BarcaBlue, BarcaRed)
-                    ),
-                    RoundedCornerShape(16.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "FCB",
-                color = TextWhite,
-                fontWeight = FontWeight.Black
-            )
-        }
-    }
-}
-
-@Composable
-fun WelcomeCard() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Brush.linearGradient(
-                    listOf(Color(0xFF073C78), Color(0xFF63102F))
-                ),
-                RoundedCornerShape(24.dp)
-            )
-            .padding(22.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text(
-            "🔵 🔴 MES QUE UN CLUB",
-            color = Gold,
-            fontSize = 12.sp
-        )
-        Text(
-            "أهلًا بك بعالم الكتلان",
-            color = TextWhite,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            "أخبار، مباريات، الفريق ومجتمع يجمع مشجعي برشلونة.",
-            color = TextWhite,
-            fontSize = 14.sp,
-            lineHeight = 22.sp
-        )
-        Text(
-            "FORÇA BARÇA",
-            color = Gold,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 2.sp
-        )
-    }
-}
-
-@Composable
-fun SectionTitle(title: String) {
-    Text(
-        title,
-        color = TextWhite,
-        fontSize = 20.sp,
-        fontWeight = FontWeight.Bold
-    )
-}
-
-@Composable
-fun NewsCard(
-    emoji: String,
-    title: String,
-    description: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceDark, RoundedCornerShape(18.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .background(
-                    BarcaBlue.copy(alpha = 0.3f),
-                    RoundedCornerShape(14.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(emoji, fontSize = 24.sp)
-        }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            Text(
-                title,
-                color = TextWhite,
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
-            Text(
-                description,
-                color = TextMuted,
-                fontSize = 12.sp,
-                lineHeight = 18.sp
-            )
-        }
-    }
-}
-
-@Composable
-fun InfoCard(
-    title: String,
-    description: String,
-    color: Color
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceDark, RoundedCornerShape(18.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            Modifier
-                .width(34.dp)
-                .height(4.dp)
-                .background(color, RoundedCornerShape(4.dp))
-        )
-        Text(
-            title,
-            color = TextWhite,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            description,
-            color = TextMuted,
-            fontSize = 13.sp
-        )
-    }
-}
-
-@Composable
-fun MatchCenter() {
-    var selectedFilter by remember {
-        mutableStateOf("القادمة")
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceDark, RoundedCornerShape(20.dp))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text(
-            "مركز المباريات",
-            color = TextWhite,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            "تابع مباريات البلوغرانا",
-            color = TextMuted,
-            fontSize = 13.sp
-        )
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf("القادمة", "النتائج").forEach { filter ->
-                FilterChip(
-                    selected = selectedFilter == filter,
-                    onClick = { selectedFilter = filter },
-                    label = { Text(filter) }
-                )
-            }
-        }
-
-        Text(
-            if (selectedFilter == "القادمة") {
-                "المباريات القادمة"
-            } else {
-                "النتائج السابقة"
-            },
-            color = Gold,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            "ستظهر المواعيد والنتائج بعد ربط مصدر بيانات حقيقي.",
-            color = TextMuted,
-            fontSize = 13.sp,
-            lineHeight = 21.sp
-        )
-    }
-}
-
-private data class DemoPlayer(
-    val name: String,
-    val position: String,
-    val number: String
-)
-
-@Composable
-fun TeamCenter() {
-    var selectedPosition by remember {
-        mutableStateOf("الكل")
-    }
-
-    val positions = listOf(
-        "الكل",
-        "حراس",
-        "دفاع",
-        "وسط",
-        "هجوم"
-    )
-
-    val demoPlayers = listOf(
-        DemoPlayer("حارس تجريبي 1", "حراس", "GK"),
-        DemoPlayer("مدافع تجريبي 1", "دفاع", "DF"),
-        DemoPlayer("مدافع تجريبي 2", "دفاع", "DF"),
-        DemoPlayer("لاعب وسط تجريبي 1", "وسط", "MF"),
-        DemoPlayer("لاعب وسط تجريبي 2", "وسط", "MF"),
-        DemoPlayer("مهاجم تجريبي 1", "هجوم", "FW"),
-        DemoPlayer("مهاجم تجريبي 2", "هجوم", "FW")
-    )
-
-    val filteredPlayers = if (selectedPosition == "الكل") {
-        demoPlayers
-    } else {
-        demoPlayers.filter {
-            it.position == selectedPosition
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceDark, RoundedCornerShape(20.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text(
-            "تشكيلة الفريق",
-            color = TextWhite,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Text(
-            "واجهة تجريبية — أسماء اللاعبين الحقيقية ستُضاف بعد تحديث بيانات الفريق.",
-            color = TextMuted,
-            fontSize = 12.sp,
-            lineHeight = 19.sp
-        )
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            positions.chunked(3).forEach { rowPositions ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    rowPositions.forEach { position ->
-                        FilterChip(
-                            modifier = Modifier.weight(1f),
-                            selected = selectedPosition == position,
-                            onClick = {
-                                selectedPosition = position
-                            },
-                            label = {
-                                Text(
-                                    position,
-                                    fontSize = 11.sp,
-                                    maxLines = 1
-                                )
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                QuickCard("⚽", "المباريات", t, Modifier.weight(1f)) { selectedTab = 1 }
+                                QuickCard("👥", "الفريق", t, Modifier.weight(1f)) { selectedTab = 2 }
+                                QuickCard("☷", "المجتمع", t, Modifier.weight(1f)) { selectedTab = 3 }
                             }
-                        )
+                        }
                     }
-                    repeat(3 - rowPositions.size) {
-                        Spacer(Modifier.weight(1f))
+                    1 -> {
+                        item { SectionHeading("مركز المباريات", t) }
+                        item { MatchCard(t) }
+                        item { InfoCard("ملاحظة", "المواعيد والنتائج المعروضة هنا نموذج أولي وليست بيانات مباشرة.", t) }
+                        item { SectionHeading("التنبيهات", t) }
+                        item { InfoCard("قريبًا", "إضافة جدول مباريات برشلونة مع النتائج والتوقيت بعد ربط مصدر بيانات حقيقي.", t) }
+                    }
+                    2 -> {
+                        item { SectionHeading("الفريق الأول", t) }
+                        item { InfoCard("FC Barcelona", "قائمة اللاعبين هنا نسخة أولية. سنربطها بمصدر محدث لتفادي عرض معلومات قديمة.", t) }
+                        item { SectionHeading("خطوط الفريق", t) }
+                        item { PlayerLine("🧤", "حراس المرمى", "GK", t) }
+                        item { PlayerLine("🛡️", "خط الدفاع", "DEF", t) }
+                        item { PlayerLine("🎯", "خط الوسط", "MID", t) }
+                        item { PlayerLine("⚡", "خط الهجوم", "FWD", t) }
+                    }
+                    3 -> {
+                        item { HeroCard(t, "مجتمع الكوليز", "مساحة النقاشات والتوقعات بين مشجعي برشلونة.") }
+                        item { InfoCard("المجتمع غير متصل بعد", "تسجيل الحسابات والمنشورات والمزامنة تحتاج خدمة خلفية وقاعدة بيانات. لن نعرض منشورات وهمية على أنها حقيقية.", t) }
+                        item { SectionHeading("أفكار للمجتمع", t) }
+                        item { NewsItem("💬", "نقاشات المباريات", "شارك رأيك بعد تجهيز تسجيل الدخول والخدمة الخلفية.", t) }
+                        item { NewsItem("📊", "توقع النتيجة", "ميزة قادمة بعد تجهيز التخزين والمزامنة.", t) }
+                    }
+                    else -> {
+                        item { HeroCard(t, "حسابي", "خصّص تجربتك داخل CulerZone.") }
+                        item { InfoCard("الحساب", "تسجيل الدخول والمزامنة لم يتم تفعيلهما بعد.", t) }
+                        item { SectionHeading("التخصيص", t) }
+                        item { NewsItem("🎨", "الثيم الحالي", t.name, t) }
+                        item {
+                            Button(onClick = { showThemes = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                                Text("اختيار ثيم التطبيق")
+                            }
+                        }
+                        item { InfoCard("عن التطبيق", "CulerZone — تطبيق عربي لمشجعي برشلونة. هذه نسخة أولية قابلة للتطوير.", t) }
                     }
                 }
             }
         }
 
-        Text(
-            "عدد اللاعبين: ${filteredPlayers.size}",
-            color = Gold,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
-        )
+        if (showThemes) {
+            AlertDialog(
+                onDismissRequest = { showThemes = false },
+                containerColor = t.panel,
+                title = { Text("اختار مظهر التطبيق", color = t.text, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth()) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        zoneThemes.forEachIndexed { index, option ->
+                            OutlinedButton(
+                                onClick = { themeIndex = index; showThemes = false },
+                                modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = t.text)
+                            ) {
+                                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                                    Text(option.name, fontWeight = if (themeIndex == index) FontWeight.Bold else FontWeight.Normal)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(Modifier.size(18.dp).background(option.primary, RoundedCornerShape(5.dp)))
+                                    Box(Modifier.size(18.dp).background(option.accent, RoundedCornerShape(5.dp)))
+                                }
+                                if (themeIndex == index) Text(" ✓", color = t.accent)
+                            }
+                        }
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showThemes = false }) { Text("إغلاق") } }
+            )
+        }
+    }
+}
 
-        filteredPlayers.forEach { player ->
-            PlayerCard(player)
+private fun pageTitle(tab: Int) = listOf("عالم برشلونة", "المباريات", "الفريق", "المجتمع", "حسابي")[tab]
+
+@Composable
+private fun HeroCard(t: ZoneTheme, title: String = "أكثر من مجرد نادٍ", subtitle: String = "كل أخبار البلوغرانا، في مكان واحد.") {
+    Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = t.primary)) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("🔵🔴  FC BARCELONA", color = Color.White.copy(alpha = 0.9f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+            Text(subtitle, color = Color.White.copy(alpha = 0.9f), fontSize = 14.sp, lineHeight = 21.sp)
+            Surface(color = Color.White.copy(alpha = 0.16f), shape = RoundedCornerShape(50)) {
+                Text("MÉS QUE UN CLUB", modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
 
 @Composable
-private fun PlayerCard(player: DemoPlayer) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Color(0xFF1A263B),
-                RoundedCornerShape(14.dp)
-            )
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .background(
-                    Brush.linearGradient(
-                        listOf(BarcaBlue, BarcaRed)
-                    ),
-                    RoundedCornerShape(12.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                player.number,
-                color = TextWhite,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Black
-            )
-        }
+private fun SectionHeading(title: String, t: ZoneTheme) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.dp).height(22.dp).background(t.accent, RoundedCornerShape(4.dp)))
+        Spacer(Modifier.width(9.dp))
+        Text(title, color = t.text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+    }
+}
 
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                player.name,
-                color = TextWhite,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-            Text(
-                player.position,
-                color = TextMuted,
-                fontSize = 12.sp
-            )
+@Composable
+private fun NewsItem(emoji: String, title: String, description: String, t: ZoneTheme) {
+    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = t.panel)) {
+        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(48.dp).background(t.primary.copy(alpha = 0.2f), RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Text(emoji, fontSize = 22.sp)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, color = t.text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(description, color = t.muted, fontSize = 12.sp, lineHeight = 18.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchCard(t: ZoneTheme) {
+    Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = t.panel)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("مباراة نموذجية • بيانات غير مباشرة", color = t.muted, fontSize = 11.sp)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("🔵🔴", fontSize = 28.sp)
+                    Text("برشلونة", color = t.text, fontWeight = FontWeight.Bold)
+                }
+                Text("VS", color = t.accent, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("⚪", fontSize = 28.sp)
+                    Text("الفريق المنافس", color = t.text, fontWeight = FontWeight.Bold)
+                }
+            }
+            HorizontalDivider(color = t.muted.copy(alpha = 0.2f))
+            Text("سيظهر الموعد والملعب بعد ربط جدول مباريات موثوق.", color = t.muted, fontSize = 12.sp, textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun InfoCard(title: String, description: String, t: ZoneTheme) {
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = t.panel)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(title, color = t.text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(description, color = t.muted, fontSize = 13.sp, lineHeight = 20.sp)
+        }
+    }
+}
+
+@Composable
+private fun QuickCard(emoji: String, label: String, t: ZoneTheme, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(modifier = modifier, onClick = onClick, shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = t.panel)) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 16.dp, horizontal = 6.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(emoji, fontSize = 22.sp)
+            Text(label, color = t.text, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun PlayerLine(emoji: String, title: String, code: String, t: ZoneTheme) {
+    Card(shape = RoundedCornerShape(15.dp), colors = CardDefaults.cardColors(containerColor = t.panel)) {
+        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(emoji, fontSize = 22.sp)
+            Spacer(Modifier.width(12.dp))
+            Text(title, modifier = Modifier.weight(1f), color = t.text, fontWeight = FontWeight.Bold)
+            Text(code, color = t.accent, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
         }
     }
 }

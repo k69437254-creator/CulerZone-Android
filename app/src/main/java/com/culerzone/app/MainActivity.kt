@@ -670,7 +670,7 @@ private fun AuthPanel(t: ZoneTheme) {
 
     var displayName by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
-
+var profileImageUrl by remember { mutableStateOf("") }
     LaunchedEffect(signedIn) {
         val user = auth.currentUser
 
@@ -687,7 +687,8 @@ private fun AuthPanel(t: ZoneTheme) {
 
                     username = snapshot.child("username")
                         .getValue(String::class.java).orEmpty()
-
+profileImageUrl = snapshot.child("profileImageUrl")
+    .getValue(String::class.java).orEmpty()
                     loadingProfile = false
                 }
                 .addOnFailureListener { error ->

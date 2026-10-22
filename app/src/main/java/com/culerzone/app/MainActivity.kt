@@ -767,6 +767,15 @@ profileImageUrl = snapshot.child("profileImageUrl")
                     singleLine = true,
                     enabled = !busy && !loadingProfile
                 )
+        OutlinedTextField(
+    value = profileImageUrl,
+    onValueChange = { profileImageUrl = it.trim() },
+    modifier = Modifier.fillMaxWidth(),
+    label = { Text("رابط صورة الحساب") },
+    placeholder = { Text("https://...") },
+    singleLine = true,
+    enabled = !busy && !loadingProfile
+)
 
                 if (loadingProfile) {
                     Row(

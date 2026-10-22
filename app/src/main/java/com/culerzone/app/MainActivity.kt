@@ -830,7 +830,8 @@ profileImageUrl = snapshot.child("profileImageUrl")
 
                                     val profile = mapOf(
                                         "displayName" to cleanName,
-                                        "username" to cleanUsername
+                                        "username" to cleanUsername,
+"profileImageUrl" to profileImageUrl.trim()
                                     )
 
                                     database.child("users")

@@ -700,6 +700,7 @@ profileImageUrl = snapshot.child("profileImageUrl")
         } else {
             displayName = ""
             username = ""
+        profileImageUrl = ""
         }
     }
 

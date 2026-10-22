@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 
 private data class ZoneTheme(
     val name: String, val bg: Color, val panel: Color,
@@ -132,7 +133,7 @@ private fun CulerZoneApp() {
                     }
                     else -> {
                         item { HeroCard(t, "حسابي", "خصّص تجربتك داخل CulerZone.") }
-                        item { InfoCard("الحساب", "تسجيل الدخول والمزامنة لم يتم تفعيلهما بعد.", t) }
+                        item { AuthPanel(t) }
                         item { SectionHeading("التخصيص", t) }
                         item { NewsItem("🎨", "الثيم الحالي", t.name, t) }
                         item {
@@ -268,6 +269,125 @@ private fun PlayerLine(emoji: String, title: String, code: String, t: ZoneTheme)
             Spacer(Modifier.width(12.dp))
             Text(title, modifier = Modifier.weight(1f), color = t.text, fontWeight = FontWeight.Bold)
             Text(code, color = t.accent, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+        }
+    }
+}
+
+@Composable
+private fun AuthPanel(t: ZoneTheme) {
+    val auth = remember { FirebaseAuth.getInstance() }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var isRegister by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var signedIn by remember { mutableStateOf(auth.currentUser != null) }
+    var currentEmail by remember { mutableStateOf(auth.currentUser?.email.orEmpty()) }
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = t.panel)
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                if (signedIn) "حسابك في CulerZone"
+                else if (isRegister) "إنشاء حساب جديد"
+                else "تسجيل الدخول",
+                color = t.text,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            if (signedIn) {
+                Text("تم تسجيل الدخول باستخدام:", color = t.muted)
+                Text(currentEmail, color = t.text)
+
+                Button(
+                    onClick = {
+                        auth.signOut()
+                        signedIn = false
+                        currentEmail = ""
+                        message = "تم تسجيل الخروج"
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy
+                ) {
+                    Text("تسجيل الخروج")
+                }
+            } else {
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("البريد الإلكتروني") },
+                    singleLine = true
+                )
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("كلمة المرور") },
+                    singleLine = true
+                )
+
+                Button(
+                    onClick = {
+                        val cleanEmail = email.trim()
+                        if (cleanEmail.isBlank() || password.length < 6) {
+                            message = "أدخل بريدًا صحيحًا وكلمة مرور من 6 أحرف على الأقل"
+                        } else {
+                            busy = true
+                            message = ""
+                            val task = if (isRegister) {
+                                auth.createUserWithEmailAndPassword(cleanEmail, password)
+                            } else {
+                                auth.signInWithEmailAndPassword(cleanEmail, password)
+                            }
+
+                            task.addOnCompleteListener { result ->
+                                busy = false
+                                if (result.isSuccessful) {
+                                    signedIn = true
+                                    currentEmail = auth.currentUser?.email.orEmpty()
+                                    message = if (isRegister) "تم إنشاء الحساب بنجاح" else "تم تسجيل الدخول بنجاح"
+                                } else {
+                                    message = result.exception?.localizedMessage
+                                        ?: "تعذّر إكمال العملية. تحقق من البيانات والاتصال."
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !busy
+                ) {
+                    Text(
+                        if (busy) "جارٍ التنفيذ..."
+                        else if (isRegister) "إنشاء الحساب"
+                        else "دخول"
+                    )
+                }
+
+                TextButton(
+                    onClick = {
+                        isRegister = !isRegister
+                        message = ""
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        if (isRegister) "عندي حساب — تسجيل الدخول"
+                        else "ما عندي حساب — إنشاء حساب"
+                    )
+                }
+            }
+
+            if (message.isNotBlank()) {
+                Text(message, color = t.accent)
+            }
         }
     }
 }
